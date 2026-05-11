@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin - Galería San Francisco</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="https://img.icons8.com/color/48/admin-settings-male.png">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: system-ui, 'Segoe UI', monospace; }
+        body { background: #0f172a; padding: 2rem; }
+        .login-box, .panel { max-width: 1200px; margin: 0 auto; background: white; border-radius: 30px; padding: 2rem; box-shadow: 0 20px 35px rgba(0,0,0,0.2); }
+        h2 { color: #1e3c72; margin-bottom: 1.5rem; }
+        input, select, textarea { width: 100%; padding: 0.8rem; margin: 0.5rem 0 1rem; border: 1px solid #ccc; border-radius: 12px; }
+        button { background: #2a5298; color: white; border: none; padding: 0.8rem 1.5rem; border-radius: 40px; cursor: pointer; font-weight: bold; margin-right: 0.5rem; }
+        .servicio-item { background: #f8fafc; padding: 1rem; border-radius: 20px; margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center; }
+        .categorias-grid { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 2rem; }
+        .cat-chip { background: #e2e8f0; padding: 0.4rem 1rem; border-radius: 30px; display: inline-flex; gap: 0.5rem; align-items: center; }
+        .oculto { display: none; }
+        .whatsapp-group { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
+        .img-preview { max-width: 100px; margin: 0.5rem 0; border-radius: 12px; }
+        button.danger { background: #dc2626; }
+        .flex-between { display: flex; justify-content: space-between; align-items: center; }
+        .form-ejemplo { border-left: 4px solid #2a5298; padding-left: 1rem; margin: 1rem 0; }
+    </style>
+</head>
+<body>
+<div id="loginPanel" class="login-box">
+    <h2>🔐 Acceso Administrador</h2>
+    <input type="password" id="adminPass" placeholder="Contraseña">
+    <button id="btnLogin">Ingresar</button>
+    <p style="margin-top:1rem;color:gray;">Contraseña por defecto: <strong>admin123</strong> (cámbiala en el código)</p>
+</div>
+
+<div id="adminPanel" class="panel oculto">
+    <div class="flex-between">
+        <h2>🛠️ Panel de Control - Galería San Francisco</h2>
+        <button id="btnLogout">Cerrar sesión</button>
+    </div>
+    
+    <!-- Gestión de Categorías -->
+    <h3>📂 Categorías</h3>
+    <div id="categoriasContainer" class="categorias-grid"></div>
+    <div style="display:flex; gap: 0.5rem;">
+        <input type="text" id="nuevaCat" placeholder="Nueva categoría ej: Reparaciones">
+        <button id="btnAddCat">➕ Agregar</button>
+    </div>
+    
+    <hr style="margin: 2rem 0;">
+    
+    <!-- Formulario de Servicio -->
+    <h3>➕ Crear / Editar Servicio</h3>
+    <input type="hidden" id="servicioId">
+    <input type="text" id="nombre" placeholder="Nombre del servicio *" required>
+    <textarea id="descripcion" rows="2" placeholder="Descripción corta (se ve en tarjeta)"></textarea>
+    <select id="categoriaSelect"></select>
+    <input type="text" id="palabrasClave" placeholder="Palabras clave separadas por coma: sticker, papel, personalizado">
+    
+    <div class="whatsapp-group">
+        <input type="text" id="wa1" placeholder="WhatsApp 1 (ej: 51987654321)">
+        <input type="text" id="wa2" placeholder="WhatsApp 2 (opcional)">
+        <input type="text" id="wa3" placeholder="WhatsApp 3 (opcional)">
+    </div>
+    
+    <input type="file" id="fotoServicio" accept="image/*">
+    <div id="fotoPreview"></div>
+    
+    <div>
+        <label><input type="checkbox" id="mostrarEjemplos"> Mostrar galería de ejemplos</label>
+    </div>
+    
+    <div id="ejemplosSection" class="oculto">
+        <h4>📸 Ejemplos de trabajos (hasta 6)</h4>
+        <div id="ejemplosContainer"></div>
+        <button id="btnAgregarEjemplo">+ Agregar imagen ejemplo</button>
+    </div>
+    
+    <button id="btnGuardar">💾 Guardar Servicio</button>
+    <button id="btnCancelar" style="background:gray;">Cancelar</button>
+    
+    <hr style="margin: 2rem 0;">
+    
+    <h3>📋 Lista de Servicios</h3>
+    <div id="serviciosList"></div>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
+    
+    const firebaseConfig = {
+        apiKey: "AIzaSyCP1rnP2TRWMZXfMjtB077gx3nUPW0oXMA", authDomain: "galeria-san-francisco.firebaseapp.com", projectId: "galeria-san-francisco",
+        storageBucket: "galeria-san-francisco.firebasestorage.app", messagingSenderId: "970226110139", appId: "1:970226110139:web:aa2aef7628dce1e4fb639e"
+    };
+    
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const storage = getStorage(app);
+    
+    let categorias = [];
+    let editandoId = null;
+    let ejemplosFiles = []; // archivos temporales
+    let ejemplosExistentes = []; // urls de firestore
+    
+    const passCorrecta = "admin123"; // CÁMBIALA
+    
+    document.getElementById("btnLogin").onclick = () => {
+        const pass = document.getElementById("adminPass").value;
+        if(pass === passCorrecta) {
+            document.getElementById("loginPanel").classList.add("oculto");
+            document.getElementById("adminPanel").classList.remove("oculto");
+            cargarTodo();
+        } else alert("Contraseña incorrecta");
+    };
+    document.getElementById("btnLogout").onclick = () => {
+        document.getElementById("loginPanel").classList.remove("oculto");
+        document.getElementById("adminPanel").classList.add("oculto");
+        limpiarFormulario();
+    };
+    
+    async function cargarTodo() {
+        await cargarCategorias();
+        await cargarServicios();
+        llenarSelectCategorias();
+        document.getElementById("btnGuardar").onclick = guardarServicio;
+        document.getElementById("btnCancelar").onclick = limpiarFormulario;
+        document.getElementById("btnAddCat").onclick = agregarCategoria;
+        document.getElementById("mostrarEjemplos").onchange = (e) => {
+            document.getElementById("ejemplosSection").classList.toggle("oculto", !e.target.checked);
+        };
+        document.getElementById("btnAgregarEjemplo").onclick = () => agregarInputEjemplo();
+    }
+    
+    async function cargarCategorias() {
+        const snap = await getDocs(query(collection(db, "categorias"), orderBy("nombre")));
+        categorias = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const container = document.getElementById("categoriasContainer");
+        container.innerHTML = categorias.map(c => `<div class="cat-chip">${c.nombre} <button class="danger" data-id="${c.id}" style="padding:2px 8px;">🗑️</button></div>`).join("");
+        document.querySelectorAll(".cat-chip button").forEach(btn => {
+            btn.onclick = () => eliminarCategoria(btn.dataset.id);
+        });
+    }
+    
+    async function agregarCategoria() {
+        const nombre = document.getElementById("nuevaCat").value.trim();
+        if(!nombre) return alert("Escribe nombre");
+        await addDoc(collection(db, "categorias"), { nombre });
+        document.getElementById("nuevaCat").value = "";
+        cargarCategorias();
+        llenarSelectCategorias();
+    }
+    
+    async function eliminarCategoria(id) {
+        if(!confirm("¿Eliminar categoría? Los servicios quedarán sin categoría")) return;
+        await deleteDoc(doc(db, "categorias", id));
+        cargarCategorias();
+        llenarSelectCategorias();
+    }
+    
+    function llenarSelectCategorias() {
+        const select = document.getElementById("categoriaSelect");
+        select.innerHTML = '<option value="">Selecciona categoría</option>';
+        categorias.forEach(c => select.innerHTML += `<option value="${c.id}">${c.nombre}</option>`);
+    }
+    
+    async function cargarServicios() {
+        const snap = await getDocs(collection(db, "servicios"));
+        const servicios = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const container = document.getElementById("serviciosList");
+        container.innerHTML = servicios.map(s => `
+            <div class="servicio-item">
+                <div><strong>${s.servicio}</strong> - ${s.categoriaId ? categorias.find(c=>c.id===s.categoriaId)?.nombre : 'Sin categoría'}</div>
+                <div>
+                    <button data-id="${s.id}" class="editar">✏️ Editar</button>
+                    <button data-id="${s.id}" class="danger eliminar">🗑️ Eliminar</button>
+                </div>
+            </div>
+        `).join("");
+        document.querySelectorAll(".editar").forEach(btn => btn.onclick = () => editarServicio(btn.dataset.id));
+        document.querySelectorAll(".eliminar").forEach(btn => btn.onclick = () => eliminarServicio(btn.dataset.id));
+    }
+    
+    async function editarServicio(id) {
+        limpiarFormulario();
+        const snap = await getDocs(collection(db, "servicios"));
+        const servicio = snap.docs.find(d => d.id === id).data();
+        editandoId = id;
+        document.getElementById("servicioId").value = id;
+        document.getElementById("nombre").value = servicio.servicio;
+        document.getElementById("descripcion").value = servicio.descripcionCorta || "";
+        document.getElementById("categoriaSelect").value = servicio.categoriaId || "";
+        document.getElementById("palabrasClave").value = (servicio.palabras_clave || []).join(", ");
+        const whats = servicio.whatsapps || [];
+        document.getElementById("wa1").value = whats[0] || "";
+        document.getElementById("wa2").value = whats[1] || "";
+        document.getElementById("wa3").value = whats[2] || "";
+        document.getElementById("mostrarEjemplos").checked = servicio.mostrar_ejemplos || false;
+        document.getElementById("ejemplosSection").classList.toggle("oculto", !servicio.mostrar_ejemplos);
+        ejemplosExistentes = servicio.ejemplos || [];
+        renderizarEjemplosExistentes();
+    }
+    
+    async function eliminarServicio(id) {
+        if(!confirm("¿Eliminar este servicio?")) return;
+        await deleteDoc(doc(db, "servicios", id));
+        cargarServicios();
+        limpiarFormulario();
+    }
+    
+    function limpiarFormulario() {
+        editandoId = null;
+        document.getElementById("servicioId").value = "";
+        document.getElementById("nombre").value = "";
+        document.getElementById("descripcion").value = "";
+        document.getElementById("categoriaSelect").value = "";
+        document.getElementById("palabrasClave").value = "";
+        document.getElementById("wa1").value = "";
+        document.getElementById("wa2").value = "";
+        document.getElementById("wa3").value = "";
+        document.getElementById("mostrarEjemplos").checked = false;
+        document.getElementById("ejemplosSection").classList.add("oculto");
+        document.getElementById("fotoServicio").value = "";
+        document.getElementById("fotoPreview").innerHTML = "";
+        ejemplosFiles = [];
+        ejemplosExistentes = [];
+        document.getElementById("ejemplosContainer").innerHTML = "";
+    }
+    
+    function agregarInputEjemplo() {
+        const container = document.getElementById("ejemplosContainer");
+        const idx = Date.now();
+        const div = document.createElement("div");
+        div.className = "form-ejemplo";
+        div.innerHTML = `
+            <input type="file" accept="image/*" data-ejemplo-idx="${idx}">
+            <input type="text" placeholder="Descripción del ejemplo" style="margin-top:5px;">
+            <button type="button" class="eliminar-ejemplo" style="background:crimson;">❌ Eliminar</button>
+        `;
+        div.querySelector(".eliminar-ejemplo").onclick = () => div.remove();
+        container.appendChild(div);
+    }
+    
+    function renderizarEjemplosExistentes() {
+        const container = document.getElementById("ejemplosContainer");
+        container.innerHTML = "";
+        ejemplosExistentes.forEach((ex, i) => {
+            const div = document.createElement("div");
+            div.className = "form-ejemplo";
+            div.innerHTML = `
+                <img src="${ex.url}" style="max-width:80px; border-radius:8px;">
+                <input type="text" value="${ex.descripcion}" placeholder="Descripción" data-old-desc="${i}">
+                <button type="button" class="eliminar-ejemplo-existente" data-idx="${i}">🗑️ Quitar</button>
+            `;
+            div.querySelector(".eliminar-ejemplo-existente").onclick = () => {
+                ejemplosExistentes.splice(i,1);
+                renderizarEjemplosExistentes();
+            };
+            container.appendChild(div);
+        });
+    }
+    
+    async function guardarServicio() {
+        const nombre = document.getElementById("nombre").value.trim();
+        if(!nombre) return alert("Nombre obligatorio");
+        const whatsapps = [document.getElementById("wa1").value, document.getElementById("wa2").value, document.getElementById("wa3").value].filter(w => w.trim());
+        const palabras = document.getElementById("palabrasClave").value.split(",").map(p=>p.trim()).filter(p=>p);
+        const mostrarEj = document.getElementById("mostrarEjemplos").checked;
+        
+        let fotoURL = "";
+        const fotoFile = document.getElementById("fotoServicio").files[0];
+        if(fotoFile) {
+            const storageRef = ref(storage, `servicios/${Date.now()}_${fotoFile.name}`);
+            await uploadBytes(storageRef, fotoFile);
+            fotoURL = await getDownloadURL(storageRef);
+        }
+        
+        // guardar ejemplos nuevos subidos
+        const nuevosEjemplos = [];
+        const inputs = document.querySelectorAll("#ejemplosContainer input[type='file']");
+        for(let input of inputs) {
+            if(input.files[0]) {
+                const file = input.files[0];
+                const desc = input.parentElement.querySelector("input[type='text']")?.value || "";
+                const refEj = ref(storage, `ejemplos/${Date.now()}_${file.name}`);
+                await uploadBytes(refEj, file);
+                const url = await getDownloadURL(refEj);
+                nuevosEjemplos.push({ url, descripcion: desc });
+            }
+        }
+        const ejemplosFinal = [...ejemplosExistentes, ...nuevosEjemplos];
+        
+        const data = {
+            servicio: nombre,
+            descripcionCorta: document.getElementById("descripcion").value,
+            categoriaId: document.getElementById("categoriaSelect").value,
+            palabras_clave: palabras,
+            whatsapps: whatsapps,
+            mostrar_ejemplos: mostrarEj,
+            ejemplos: ejemplosFinal,
+            fotoURL: fotoURL || (editandoId ? undefined : "")
+        };
+        
+        if(editandoId) {
+            await updateDoc(doc(db, "servicios", editandoId), data);
+        } else {
+            await addDoc(collection(db, "servicios"), data);
+        }
+        limpiarFormulario();
+        cargarServicios();
+        alert("Servicio guardado");
+    }
+</script>
+</body>
+</html>

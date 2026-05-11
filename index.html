@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Galería San Francisco Ica - Servicios en un solo lugar</title>
+    <meta name="description" content="Directorio de servicios de Galería San Francisco en Ica. Encuentra impresiones, diseño, documentos y más. WhatsApp directo y ejemplos de trabajos.">
+    <meta name="keywords" content="Galería San Francisco, Ica, servicios Ica, impresiones Ica, diseño Ica, documentos Ica">
+    <meta name="author" content="Galería San Francisco">
+    <meta property="og:title" content="Galería San Francisco Ica - Servicios">
+    <meta property="og:description" content="Directorio de servicios en Galería San Francisco, Ica">
+    <meta property="og:type" content="website">
+    <link rel="icon" type="image/png" href="https://img.icons8.com/color/48/gallery.png">
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, collection, getDocs, query, where } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getStorage, ref, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
+        
+        // Tu configuración de Firebase (la editarás después)
+        const firebaseConfig = {
+            apiKey: "AIzaSyCP1rnP2TRWMZXfMjtB077gx3nUPW0oXMA", authDomain: "galeria-san-francisco.firebaseapp.com", projectId: "galeria-san-francisco",
+        storageBucket: "galeria-san-francisco.firebasestorage.app", messagingSenderId: "970226110139", appId: "1:970226110139:web:aa2aef7628dce1e4fb639e"
+        };
+        
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const storage = getStorage(app);
+        
+        let servicios = [];
+        let categorias = [];
+        
+        // Cargar datos
+        async function cargarDatos() {
+            // Cargar categorías
+            const catsSnap = await getDocs(collection(db, "categorias"));
+            categorias = catsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            
+            // Cargar servicios
+            const servsSnap = await getDocs(collection(db, "servicios"));
+            servicios = servsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            
+            // Renderizar filtros y tarjetas
+            renderizarFiltros();
+            renderizarTarjetas(servicios);
+        }
+        
+        function renderizarFiltros() {
+            const container = document.getElementById("filtros-container");
+            container.innerHTML = `<button class="filtro-btn active" data-cat="todos">Todos</button>`;
+            categorias.forEach(cat => {
+                container.innerHTML += `<button class="filtro-btn" data-cat="${cat.id}">${cat.nombre}</button>`;
+            });
+            
+            document.querySelectorAll(".filtro-btn").forEach(btn => {
+                btn.addEventListener("click", () => {
+                    document.querySelectorAll(".filtro-btn").forEach(b => b.classList.remove("active"));
+                    btn.classList.add("active");
+                    const catId = btn.dataset.cat;
+                    if (catId === "todos") {
+                        renderizarTarjetas(servicios);
+                    } else {
+                        const filtrados = servicios.filter(s => s.categoriaId === catId);
+                        renderizarTarjetas(filtrados);
+                    }
+                });
+            });
+        }
+        
+        function renderizarTarjetas(serviciosArray) {
+            const container = document.getElementById("tarjetas-container");
+            if (serviciosArray.length === 0) {
+                container.innerHTML = '<p class="no-resultados">No hay servicios en esta categoría.</p>';
+                return;
+            }
+            
+            container.innerHTML = "";
+            serviciosArray.forEach(async (servicio) => {
+                let fotoURL = "/api/placeholder/300/200";
+                if (servicio.fotoURL) {
+                    try {
+                        fotoURL = await getDownloadURL(ref(storage, servicio.fotoURL));
+                    } catch(e) { console.error(e); }
+                }
+                
+                const card = document.createElement("div");
+                card.className = "tarjeta";
+                card.innerHTML = `
+                    <img src="${fotoURL}" alt="${servicio.servicio}" class="tarjeta-img" loading="lazy">
+                    <div class="tarjeta-contenido">
+                        <h3>${servicio.servicio}</h3>
+                        <p class="descripcion">${servicio.descripcionCorta || servicio.descripcion?.substring(0, 80) || ""}...</p>
+                        <div class="whatsapps-container">
+                            ${servicio.whatsapps.map(w => `<a href="https://wa.me/${w}" target="_blank" class="whatsapp-btn">💬 ${w}</a>`).join('')}
+                        </div>
+                        <a href="servicio.html?id=${servicio.id}" class="ver-mas">Ver más detalles →</a>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+        
+        // Buscador en tiempo real
+        document.getElementById("buscador").addEventListener("input", (e) => {
+            const termino = e.target.value.toLowerCase();
+            const filtrados = servicios.filter(s => 
+                s.servicio.toLowerCase().includes(termino) || 
+                (s.descripcionCorta || s.descripcion || "").toLowerCase().includes(termino) ||
+                (s.palabras_clave || []).some(p => p.toLowerCase().includes(termino))
+            );
+            renderizarTarjetas(filtrados);
+        });
+        
+        cargarDatos();
+    </script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background: #f5f5f5; }
+        .header { background: linear-gradient(135deg, #1e3c72, #2a5298); color: white; padding: 2rem 1rem; text-align: center; }
+        .header h1 { font-size: 2rem; margin-bottom: 0.5rem; }
+        .header p { opacity: 0.9; }
+        .buscador-container { max-width: 600px; margin: 1rem auto 0; padding: 0 1rem; }
+        #buscador { width: 100%; padding: 1rem; border: none; border-radius: 50px; font-size: 1rem; outline: none; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .filtros { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.5rem; padding: 1rem; background: white; margin: 1rem; border-radius: 50px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .filtro-btn { background: #e0e0e0; border: none; padding: 0.5rem 1.2rem; border-radius: 50px; cursor: pointer; transition: all 0.3s; font-weight: 500; }
+        .filtro-btn.active { background: #2a5298; color: white; }
+        .tarjetas-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.5rem; padding: 1rem; max-width: 1400px; margin: 0 auto; }
+        .tarjeta { background: white; border-radius: 20px; overflow: hidden; box-shadow: 0 5px 15px rgba(0,0,0,0.08); transition: transform 0.2s; }
+        .tarjeta:hover { transform: translateY(-5px); }
+        .tarjeta-img { width: 100%; height: 180px; object-fit: cover; background: #ddd; }
+        .tarjeta-contenido { padding: 1.2rem; }
+        .tarjeta-contenido h3 { font-size: 1.2rem; margin-bottom: 0.5rem; color: #1e3c72; }
+        .descripcion { color: #555; font-size: 0.9rem; margin-bottom: 1rem; line-height: 1.4; }
+        .whatsapps-container { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem; }
+        .whatsapp-btn { background: #25D366; color: white; text-decoration: none; padding: 0.4rem 0.8rem; border-radius: 30px; font-size: 0.8rem; display: inline-block; transition: 0.2s; }
+        .whatsapp-btn:hover { background: #128C7E; }
+        .ver-mas { color: #2a5298; text-decoration: none; font-weight: 500; font-size: 0.9rem; display: inline-block; }
+        .no-resultados { text-align: center; padding: 3rem; color: #777; grid-column: 1 / -1; }
+        footer { text-align: center; padding: 2rem; background: #1e1e2f; color: white; margin-top: 2rem; font-size: 0.9rem; }
+        @media (max-width: 600px) { .tarjetas-grid { grid-template-columns: 1fr; } .filtros { border-radius: 20px; } }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🏬 Galería San Francisco - Ica</h1>
+        <p>Encuentra todos mis servicios en un solo lugar</p>
+        <div class="buscador-container">
+            <input type="text" id="buscador" placeholder="🔍 Buscar servicio... ej: invitación, sticker, curriculum">
+        </div>
+    </div>
+    <div class="filtros" id="filtros-container"></div>
+    <div class="tarjetas-grid" id="tarjetas-container">
+        <div class="no-resultados">Cargando servicios...</div>
+    </div>
+    <footer>
+        <p>📍 Av. San Martín 113 - Galería San Francisco, Ica</p>
+        <p>📱 Contacta directo por WhatsApp desde cada servicio</p>
+    </footer>
+</body>
+</html>
