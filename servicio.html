@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Servicio - Galería San Francisco Ica</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, doc, getDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getStorage, ref, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
+        
+        const firebaseConfig = {
+            apiKey: "AIzaSyCP1rnP2TRWMZXfMjtB077gx3nUPW0oXMA", authDomain: "galeria-san-francisco.firebaseapp.com", projectId: "galeria-san-francisco",
+        storageBucket: "galeria-san-francisco.firebasestorage.app", messagingSenderId: "970226110139", appId: "1:970226110139:web:aa2aef7628dce1e4fb639e"
+        };
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const storage = getStorage(app);
+        
+        const urlParams = new URLSearchParams(window.location.search);
+        const id = urlParams.get('id');
+        
+        async function cargarServicio() {
+            if(!id) { document.body.innerHTML = "<h2>Servicio no encontrado</h2>"; return; }
+            const docRef = doc(db, "servicios", id);
+            const snap = await getDoc(docRef);
+            if(!snap.exists()) { document.body.innerHTML = "<h2>Servicio no existe</h2>"; return; }
+            const data = snap.data();
+            document.title = `${data.servicio} - Galería San Francisco Ica`;
+            
+            let fotoURL = "/api/placeholder/600/400";
+            if(data.fotoURL) {
+                try { fotoURL = await getDownloadURL(ref(storage, data.fotoURL)); } catch(e) {}
+            }
+            
+            let html = `
+                <div style="max-width:900px; margin:2rem auto; background:white; border-radius:30px; overflow:hidden; box-shadow:0 10px 30px rgba(0,0,0,0.1);">
+                    <img src="${fotoURL}" style="width:100%; max-height:400px; object-fit:cover;">
+                    <div style="padding:2rem;">
+                        <h1>${data.servicio}</h1>
+                        <p style="font-size:1.1rem; color:#333; line-height:1.5;">${data.descripcionCorta || ''}</p>
+                        <div style="margin:1rem 0;">
+                            ${data.whatsapps.map(w => `<a href="https://wa.me/${w}" target="_blank" style="background:#25D366; color:white; padding:0.6rem 1rem; border-radius:50px; display:inline-block; margin:0.3rem; text-decoration:none;">📱 WhatsApp ${w}</a>`).join('')}
+                        </div>
+            `;
+            if(data.mostrar_ejemplos && data.ejemplos?.length) {
+                html += `<h2>📸 Ejemplos de trabajos</h2><div style="display:flex; flex-wrap:wrap; gap:1rem;">`;
+                for(let ex of data.ejemplos) {
+                    html += `<div><img src="${ex.url}" style="max-width:200px; border-radius:16px;" loading="lazy"><p>${ex.descripcion || ''}</p></div>`;
+                }
+                html += `</div>`;
+            }
+            html += `<p style="margin-top:2rem; color:#2a5298;">📍 Av. San Martín 113 - Galería San Francisco, Ica</p>
+                    <a href="index.html" style="display:inline-block; margin-top:1rem;">← Volver al directorio</a>
+                </div></div>`;
+            document.body.innerHTML = html;
+        }
+        cargarServicio();
+    </script>
+    <style>
+        body { background:#f0f2f5; font-family: system-ui; margin:0; padding:1rem; }
+        a { text-decoration:none; color:#2a5298; }
+    </style>
+</head>
+<body>Cargando servicio...</body>
+</html>
