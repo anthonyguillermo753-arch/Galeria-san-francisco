@@ -10,17 +10,22 @@
         body { background: #0f172a; padding: 2rem; }
         .login-box, .panel { max-width: 1200px; margin: 0 auto; background: white; border-radius: 30px; padding: 2rem; box-shadow: 0 20px 35px rgba(0,0,0,0.2); }
         h2 { color: #1e3c72; margin-bottom: 1.5rem; }
+        h3 { color: #1e3c72; margin: 1rem 0; }
         input, select, textarea { width: 100%; padding: 0.8rem; margin: 0.5rem 0 1rem; border: 1px solid #ccc; border-radius: 12px; }
         button { background: #2a5298; color: white; border: none; padding: 0.8rem 1.5rem; border-radius: 40px; cursor: pointer; font-weight: bold; margin-right: 0.5rem; }
-        .servicio-item { background: #f8fafc; padding: 1rem; border-radius: 20px; margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center; }
+        .servicio-item { background: #f8fafc; padding: 1rem; border-radius: 20px; margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; }
         .categorias-grid { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 2rem; }
         .cat-chip { background: #e2e8f0; padding: 0.4rem 1rem; border-radius: 30px; display: inline-flex; gap: 0.5rem; align-items: center; }
         .oculto { display: none; }
         .whatsapp-group { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
-        .img-preview { max-width: 100px; margin: 0.5rem 0; border-radius: 12px; }
         button.danger { background: #dc2626; }
-        .flex-between { display: flex; justify-content: space-between; align-items: center; }
+        .flex-between { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; }
         .form-ejemplo { border-left: 4px solid #2a5298; padding-left: 1rem; margin: 1rem 0; }
+        .foto-card { background: #f8fafc; padding: 1rem; border-radius: 16px; margin: 1rem 0; }
+        .foto-preview { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; margin-top: 0.5rem; }
+        .foto-preview img { border-radius: 12px; border: 1px solid #ddd; background: white; }
+        .btn-small { padding: 0.4rem 1rem; font-size: 0.8rem; }
+        hr { margin: 1rem 0; }
     </style>
 </head>
 <body>
@@ -28,7 +33,7 @@
     <h2>🔐 Acceso Administrador</h2>
     <input type="password" id="adminPass" placeholder="Contraseña">
     <button id="btnLogin">Ingresar</button>
-    <p style="margin-top:1rem;color:gray;">Contraseña por defecto: <strong>admin123</strong> (cámbiala en el código)</p>
+    <p style="margin-top:1rem;color:gray;">Contraseña por defecto: <strong>admin123</strong></p>
 </div>
 
 <div id="adminPanel" class="panel oculto">
@@ -40,12 +45,12 @@
     <!-- Gestión de Categorías -->
     <h3>📂 Categorías</h3>
     <div id="categoriasContainer" class="categorias-grid"></div>
-    <div style="display:flex; gap: 0.5rem;">
-        <input type="text" id="nuevaCat" placeholder="Nueva categoría ej: Reparaciones">
+    <div style="display:flex; gap: 0.5rem; flex-wrap: wrap;">
+        <input type="text" id="nuevaCat" placeholder="Nueva categoría ej: Reparaciones" style="flex:1;">
         <button id="btnAddCat">➕ Agregar</button>
     </div>
     
-    <hr style="margin: 2rem 0;">
+    <hr>
     
     <!-- Formulario de Servicio -->
     <h3>➕ Crear / Editar Servicio</h3>
@@ -61,8 +66,30 @@
         <input type="text" id="wa3" placeholder="WhatsApp 3 (opcional)">
     </div>
     
-    <input type="file" id="fotoServicio" accept="image/*">
-    <div id="fotoPreview"></div>
+    <!-- SECCIÓN DE FOTO MEJORADA -->
+    <div class="foto-card">
+        <label style="font-weight: bold; display: block; margin-bottom: 0.5rem;">🖼️ Foto principal del servicio</label>
+        
+        <!-- Foto actual (al editar) -->
+        <div id="fotoActualContainer" style="display: none;">
+            <div class="foto-preview">
+                <img id="fotoActualImg" style="max-width: 120px; max-height: 120px; object-fit: cover;">
+                <button type="button" id="btnEliminarFoto" class="btn-small danger" style="background:#dc2626;">🗑️ Eliminar foto actual</button>
+            </div>
+        </div>
+        
+        <!-- Subir foto nueva -->
+        <div id="fotoNuevaContainer">
+            <input type="file" id="fotoServicio" accept="image/*">
+            <div id="fotoPreviewNueva" style="display: none; margin-top: 0.5rem;">
+                <div class="foto-preview">
+                    <img id="fotoPreviewNuevaImg" style="max-width: 120px; max-height: 120px; object-fit: cover;">
+                    <span style="color: #22c55e; font-size: 0.8rem;">✅ Nueva foto (se guardará al hacer clic en Guardar)</span>
+                </div>
+            </div>
+        </div>
+        <p style="font-size: 0.75rem; color: #64748b; margin-top: 0.5rem;">📌 Formatos: JPG, PNG. Recomendado: 500x500 px</p>
+    </div>
     
     <div>
         <label><input type="checkbox" id="mostrarEjemplos"> Mostrar galería de ejemplos</label>
@@ -71,13 +98,15 @@
     <div id="ejemplosSection" class="oculto">
         <h4>📸 Ejemplos de trabajos (hasta 6)</h4>
         <div id="ejemplosContainer"></div>
-        <button id="btnAgregarEjemplo">+ Agregar imagen ejemplo</button>
+        <button id="btnAgregarEjemplo" type="button">+ Agregar imagen ejemplo</button>
     </div>
     
-    <button id="btnGuardar">💾 Guardar Servicio</button>
-    <button id="btnCancelar" style="background:gray;">Cancelar</button>
+    <div style="margin-top: 1rem;">
+        <button id="btnGuardar">💾 Guardar Servicio</button>
+        <button id="btnCancelar" style="background:gray;">Cancelar</button>
+    </div>
     
-    <hr style="margin: 2rem 0;">
+    <hr>
     
     <h3>📋 Lista de Servicios</h3>
     <div id="serviciosList"></div>
@@ -89,8 +118,12 @@
     import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
     
     const firebaseConfig = {
-        apiKey: "AIzaSyCP1rnP2TRWMZXfMjtB077gx3nUPW0oXMA", authDomain: "galeria-san-francisco.firebaseapp.com", projectId: "galeria-san-francisco",
-        storageBucket: "galeria-san-francisco.firebasestorage.app", messagingSenderId: "970226110139", appId: "1:970226110139:web:aa2aef7628dce1e4fb639e"
+        apiKey: "AIzaSyCP1rnP2TRWMZXfMjtB077gx3nUPW0oXMA",
+        authDomain: "galeria-san-francisco.firebaseapp.com",
+        projectId: "galeria-san-francisco",
+        storageBucket: "galeria-san-francisco.firebasestorage.app",
+        messagingSenderId: "970226110139",
+        appId: "1:970226110139:web:aa2aef7628dce1e4fb639e"
     };
     
     const app = initializeApp(firebaseConfig);
@@ -99,11 +132,13 @@
     
     let categorias = [];
     let editandoId = null;
-    let ejemplosFiles = []; // archivos temporales
-    let ejemplosExistentes = []; // urls de firestore
+    let ejemplosExistentes = [];
+    let fotoActualUrl = "";
+    let eliminarFoto = false;
     
-    const passCorrecta = "admin123"; // CÁMBIALA
+    const passCorrecta = "admin123";
     
+    // LOGIN
     document.getElementById("btnLogin").onclick = () => {
         const pass = document.getElementById("adminPass").value;
         if(pass === passCorrecta) {
@@ -112,11 +147,35 @@
             cargarTodo();
         } else alert("Contraseña incorrecta");
     };
+    
     document.getElementById("btnLogout").onclick = () => {
         document.getElementById("loginPanel").classList.remove("oculto");
         document.getElementById("adminPanel").classList.add("oculto");
         limpiarFormulario();
     };
+    
+    // EVENTOS DE FOTO
+    document.getElementById("fotoServicio").addEventListener("change", (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                document.getElementById("fotoPreviewNuevaImg").src = event.target.result;
+                document.getElementById("fotoPreviewNueva").style.display = "block";
+            };
+            reader.readAsDataURL(file);
+        } else {
+            document.getElementById("fotoPreviewNueva").style.display = "none";
+        }
+    });
+    
+    document.getElementById("btnEliminarFoto")?.addEventListener("click", () => {
+        if (confirm("¿Eliminar la foto actual de este servicio?")) {
+            eliminarFoto = true;
+            document.getElementById("fotoActualContainer").style.display = "none";
+            alert("La foto se eliminará al guardar los cambios.");
+        }
+    });
     
     async function cargarTodo() {
         await cargarCategorias();
@@ -169,7 +228,7 @@
         const container = document.getElementById("serviciosList");
         container.innerHTML = servicios.map(s => `
             <div class="servicio-item">
-                <div><strong>${s.servicio}</strong> - ${s.categoriaId ? categorias.find(c=>c.id===s.categoriaId)?.nombre : 'Sin categoría'}</div>
+                <div><strong>${escapeHtml(s.servicio)}</strong> - ${s.categoriaId ? categorias.find(c=>c.id===s.categoriaId)?.nombre : 'Sin categoría'}</div>
                 <div>
                     <button data-id="${s.id}" class="editar">✏️ Editar</button>
                     <button data-id="${s.id}" class="danger eliminar">🗑️ Eliminar</button>
@@ -182,22 +241,39 @@
     
     async function editarServicio(id) {
         limpiarFormulario();
-        const snap = await getDocs(collection(db, "servicios"));
-        const servicio = snap.docs.find(d => d.id === id).data();
+        const docRef = doc(db, "servicios", id);
+        const docSnap = await getDoc(docRef);
+        const servicio = docSnap.data();
         editandoId = id;
+        
         document.getElementById("servicioId").value = id;
-        document.getElementById("nombre").value = servicio.servicio;
+        document.getElementById("nombre").value = servicio.servicio || "";
         document.getElementById("descripcion").value = servicio.descripcionCorta || "";
         document.getElementById("categoriaSelect").value = servicio.categoriaId || "";
         document.getElementById("palabrasClave").value = (servicio.palabras_clave || []).join(", ");
+        
         const whats = servicio.whatsapps || [];
         document.getElementById("wa1").value = whats[0] || "";
         document.getElementById("wa2").value = whats[1] || "";
         document.getElementById("wa3").value = whats[2] || "";
+        
         document.getElementById("mostrarEjemplos").checked = servicio.mostrar_ejemplos || false;
         document.getElementById("ejemplosSection").classList.toggle("oculto", !servicio.mostrar_ejemplos);
         ejemplosExistentes = servicio.ejemplos || [];
         renderizarEjemplosExistentes();
+        
+        // Cargar foto actual
+        if (servicio.fotoURL) {
+            try {
+                fotoActualUrl = await getDownloadURL(ref(storage, servicio.fotoURL));
+                document.getElementById("fotoActualImg").src = fotoActualUrl;
+                document.getElementById("fotoActualContainer").style.display = "block";
+            } catch(e) { console.error("Error al cargar foto:", e); }
+        } else {
+            fotoActualUrl = "";
+            document.getElementById("fotoActualContainer").style.display = "none";
+        }
+        eliminarFoto = false;
     }
     
     async function eliminarServicio(id) {
@@ -220,10 +296,12 @@
         document.getElementById("mostrarEjemplos").checked = false;
         document.getElementById("ejemplosSection").classList.add("oculto");
         document.getElementById("fotoServicio").value = "";
-        document.getElementById("fotoPreview").innerHTML = "";
-        ejemplosFiles = [];
+        document.getElementById("fotoPreviewNueva").style.display = "none";
+        document.getElementById("fotoActualContainer").style.display = "none";
         ejemplosExistentes = [];
         document.getElementById("ejemplosContainer").innerHTML = "";
+        eliminarFoto = false;
+        fotoActualUrl = "";
     }
     
     function agregarInputEjemplo() {
@@ -234,7 +312,7 @@
         div.innerHTML = `
             <input type="file" accept="image/*" data-ejemplo-idx="${idx}">
             <input type="text" placeholder="Descripción del ejemplo" style="margin-top:5px;">
-            <button type="button" class="eliminar-ejemplo" style="background:crimson;">❌ Eliminar</button>
+            <button type="button" class="eliminar-ejemplo" style="background:crimson; padding:0.3rem 0.8rem;">❌ Eliminar</button>
         `;
         div.querySelector(".eliminar-ejemplo").onclick = () => div.remove();
         container.appendChild(div);
@@ -248,8 +326,8 @@
             div.className = "form-ejemplo";
             div.innerHTML = `
                 <img src="${ex.url}" style="max-width:80px; border-radius:8px;">
-                <input type="text" value="${ex.descripcion}" placeholder="Descripción" data-old-desc="${i}">
-                <button type="button" class="eliminar-ejemplo-existente" data-idx="${i}">🗑️ Quitar</button>
+                <input type="text" value="${escapeHtml(ex.descripcion)}" placeholder="Descripción" data-old-desc="${i}" style="margin-top:5px;">
+                <button type="button" class="eliminar-ejemplo-existente" data-idx="${i}" style="background:crimson; padding:0.3rem 0.8rem;">🗑️ Quitar</button>
             `;
             div.querySelector(".eliminar-ejemplo-existente").onclick = () => {
                 ejemplosExistentes.splice(i,1);
@@ -262,23 +340,39 @@
     async function guardarServicio() {
         const nombre = document.getElementById("nombre").value.trim();
         if(!nombre) return alert("Nombre obligatorio");
+        
         const whatsapps = [document.getElementById("wa1").value, document.getElementById("wa2").value, document.getElementById("wa3").value].filter(w => w.trim());
         const palabras = document.getElementById("palabrasClave").value.split(",").map(p=>p.trim()).filter(p=>p);
         const mostrarEj = document.getElementById("mostrarEjemplos").checked;
         
         let fotoURL = "";
+        
+        // Manejar eliminación de foto
+        if (eliminarFoto && editandoId) {
+            if (fotoActualUrl) {
+                try {
+                    const oldRef = ref(storage, `servicios/${editandoId}`);
+                    await deleteObject(oldRef);
+                } catch(e) { console.log("No se pudo eliminar foto vieja"); }
+            }
+            fotoURL = "";
+        }
+        
+        // Subir foto nueva
         const fotoFile = document.getElementById("fotoServicio").files[0];
-        if(fotoFile) {
+        if (fotoFile) {
             const storageRef = ref(storage, `servicios/${Date.now()}_${fotoFile.name}`);
             await uploadBytes(storageRef, fotoFile);
             fotoURL = await getDownloadURL(storageRef);
+        } else if (!eliminarFoto && editandoId && fotoActualUrl) {
+            fotoURL = fotoActualUrl;
         }
         
-        // guardar ejemplos nuevos subidos
+        // Guardar ejemplos nuevos
         const nuevosEjemplos = [];
         const inputs = document.querySelectorAll("#ejemplosContainer input[type='file']");
         for(let input of inputs) {
-            if(input.files[0]) {
+            if(input.files && input.files[0]) {
                 const file = input.files[0];
                 const desc = input.parentElement.querySelector("input[type='text']")?.value || "";
                 const refEj = ref(storage, `ejemplos/${Date.now()}_${file.name}`);
@@ -297,7 +391,7 @@
             whatsapps: whatsapps,
             mostrar_ejemplos: mostrarEj,
             ejemplos: ejemplosFinal,
-            fotoURL: fotoURL || (editandoId ? undefined : "")
+            fotoURL: fotoURL
         };
         
         if(editandoId) {
@@ -307,7 +401,24 @@
         }
         limpiarFormulario();
         cargarServicios();
-        alert("Servicio guardado");
+        alert("Servicio guardado correctamente");
+    }
+    
+    function escapeHtml(str) {
+        if (!str) return "";
+        return str.replace(/[&<>]/g, function(m) {
+            if (m === '&') return '&amp;';
+            if (m === '<') return '&lt;';
+            if (m === '>') return '&gt;';
+            return m;
+        });
+    }
+    
+    // Helper para getDoc
+    async function getDoc(docRef) {
+        const snapshot = await getDocs(collection(db, "servicios"));
+        const found = snapshot.docs.find(d => d.id === docRef.id);
+        return { exists: () => !!found, data: () => found?.data() };
     }
 </script>
 </body>
